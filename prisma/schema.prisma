@@ -19,12 +19,12 @@ model User {
   password        String
   role            RoleEnumType? @default(user)
 
-  verficationCode String?       @db.Text
+  verificationCode String?       @db.Text
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  @@unique([email, verficationCode])
-  @@index([email, verficationCode])
+  @@unique([email, verificationCode])
+  @@index([email, verificationCode])
   @@map(name: "users")
 }
 

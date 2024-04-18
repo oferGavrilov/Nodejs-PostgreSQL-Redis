@@ -22,3 +22,13 @@ export const registerUserSchema = object({
         message: 'Passwords do not match',
     }),
 })
+
+export const loginUserSchema = object({
+    body: object({
+        email: z.string({ required_error: 'Email is required' }).email({ message: 'Invalid email' }).max(50, 'Email must be at most 50 characters'),
+        password: z.string({ required_error: 'Password is required' }).min(6, 'Password must be at least 6 characters').max(50, 'Password must be at most 50 characters'),
+    })
+})
+
+export type RegisterUserInput = Omit<TypeOf<typeof registerUserSchema>['body'], 'passwordConfirm'>;
+export type LoginUserInput = TypeOf<typeof loginUserSchema>['body'];
