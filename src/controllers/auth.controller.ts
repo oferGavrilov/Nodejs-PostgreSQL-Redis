@@ -1,10 +1,10 @@
 import crypto from 'crypto';
 import { CookieOptions, NextFunction, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import { createUser, updateUser } from '../services/user.service';
+import { createUser, findUniqueUser, signTokens, updateUser } from '../services/user.service';
 import Email from '../utils/email';
 import { Prisma } from '@prisma/client';
-import { VerifyEmailInput } from '../schemas/user.schema';
+import { LoginUserInput, VerifyEmailInput } from '../schemas/user.schema';
 import ErrorHandler from '../utils/ErrorHandler';
 
 const cookiesOptions: CookieOptions = {
@@ -16,14 +16,14 @@ if (process.env.NODE_ENV === 'production') cookiesOptions.secure = true
 
 const accessTokenCookieOptions: CookieOptions = {
     ...cookiesOptions,
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    expires: new Date(Date.now() + (parseInt(process.env.accessTokenExpiresIn as string)) * 60 * 1000),
+    maxAge: (parseInt(process.env.accessTokenExpiresIn as string)) * 60 * 1000
 }
 
 const refreshTokenCookieOptions: CookieOptions = {
     ...cookiesOptions,
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    expires: new Date(Date.now() + (parseInt(process.env.refreshTokenExpiresIn as string)) * 60 * 1000),
+    maxAge: (parseInt(process.env.refreshTokenExpiresIn as string)) * 60 * 1000
 }
 
 export const registerUserHandler = async (req: Request, res: Response, next: NextFunction) => {
@@ -73,6 +73,47 @@ export const registerUserHandler = async (req: Request, res: Response, next: Nex
     }
 }
 
+export const loginUserHandler = async (
+    req: Request<LoginUserInput>,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const { email, password } = req.body;
+        const user = await findUniqueUser(
+            { email: email.toLowerCase() },
+            { id: true, email: true, verified: true, password: true }
+        );
+
+        if (!user) return next(new ErrorHandler(401, 'Invalid email or password'))
+
+        // if user is verified
+        if (!user.verified) return next(new ErrorHandler(401, 'Please verify your email address to continue'))
+
+        // compare password
+        const isPasswordMatch = await bcrypt.compare(password, user.password);
+        if (!isPasswordMatch) return next(new ErrorHandler(401, 'Invalid email or password'))
+
+        console.log('user', user)
+        // sign tokens
+        const { access_token, refresh_token } = await signTokens(user);
+
+        res.cookie('access_token', access_token, accessTokenCookieOptions)
+        res.cookie('refresh_token', refresh_token, refreshTokenCookieOptions)
+        res.cookie('logged_in', true, {
+            ...accessTokenCookieOptions,
+            httpOnly: false
+        })
+        res.status(200).json({
+            status: 'success',
+            message: 'Login successful',
+            access_token,
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
 export const verifyEmailHandler = async (
     req: Request<VerifyEmailInput>,
     res: Response,
@@ -89,7 +130,7 @@ export const verifyEmailHandler = async (
             { verified: true, verificationCode: null },
             { email: true }
         );
-        
+
         if (!user) return next(new ErrorHandler(401, 'Could not verify email. Please try again.'))
 
         res.status(200).json({

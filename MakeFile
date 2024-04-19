@@ -1,6 +1,55 @@
-build:
+build: keys
 	docker-compose up -d
 stop:
 	docker-compose down
 stop-v:
 	docker-compose down -v
+
+# Define the directory where to store the keys
+KEY_DIR := jwt-keys
+
+# Define the filenames for the keys
+ACCESS_PRIVATE_KEY := $(KEY_DIR)/accessTokenPrivateKey.pem
+ACCESS_PUBLIC_KEY := $(KEY_DIR)/accessTokenPublicKey.pem
+REFRESH_PRIVATE_KEY := $(KEY_DIR)/refreshTokenPrivateKey.pem
+REFRESH_PUBLIC_KEY := $(KEY_DIR)/refreshTokenPublicKey.pem
+
+# Default target
+all: keys
+
+# Create Keys directory and generate RSA keys
+keys: clean $(KEY_DIR) $(ACCESS_PRIVATE_KEY) $(ACCESS_PUBLIC_KEY) $(REFRESH_PRIVATE_KEY) $(REFRESH_PUBLIC_KEY)
+
+# Create the directory if it does not exist
+$(KEY_DIR):
+	mkdir -p $(KEY_DIR)
+
+# Generate RSA Private Key for Access Token
+$(ACCESS_PRIVATE_KEY):
+	openssl genrsa -out $(ACCESS_PRIVATE_KEY) 2048
+
+# Generate RSA Public Key for Access Token
+$(ACCESS_PUBLIC_KEY): $(ACCESS_PRIVATE_KEY)
+	openssl rsa -in $(ACCESS_PRIVATE_KEY) -outform PEM -pubout -out $(ACCESS_PUBLIC_KEY)
+
+# Generate RSA Private Key for Refresh Token
+$(REFRESH_PRIVATE_KEY):
+	openssl genrsa -out $(REFRESH_PRIVATE_KEY) 2048
+
+# Generate RSA Public Key for Refresh Token
+$(REFRESH_PUBLIC_KEY): $(REFRESH_PRIVATE_KEY)
+	openssl rsa -in $(REFRESH_PRIVATE_KEY) -outform PEM -pubout -out $(REFRESH_PUBLIC_KEY)
+
+# Clean up the keys and the directory
+clean:
+	rm -rf $(KEY_DIR)
+
+.PHONY: all keys clean build stop stop-v help
+
+help:
+	@echo "Available commands:"
+	@echo "  build       - Start the Docker containers."
+	@echo "  stop        - Stop the Docker containers."
+	@echo "  stop-v      - Stop the Docker containers and remove volumes."
+	@echo "  keys        - Generate RSA keys for JWT authentication."
+	@echo "  clean       - Remove generated keys and clean up directories."
