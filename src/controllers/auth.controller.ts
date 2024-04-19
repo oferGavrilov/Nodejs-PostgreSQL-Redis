@@ -94,9 +94,8 @@ export const loginUserHandler = async (
         const isPasswordMatch = await bcrypt.compare(password, user.password);
         if (!isPasswordMatch) return next(new ErrorHandler(401, 'Invalid email or password'))
 
-        console.log('user', user)
         // sign tokens
-        const { access_token, refresh_token } = await signTokens(user);
+        const { access_token, refresh_token } = signTokens(user);
 
         res.cookie('access_token', access_token, accessTokenCookieOptions)
         res.cookie('refresh_token', refresh_token, refreshTokenCookieOptions)

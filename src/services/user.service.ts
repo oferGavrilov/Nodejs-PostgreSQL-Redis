@@ -40,7 +40,7 @@ export const updateUser = async (
     return (await prisma.user.update({ where, data, select }));
 };
 
-export const signTokens = async (user: Prisma.UserCreateInput) => {
+export const signTokens = (user: Prisma.UserCreateInput) => {
     // create session
     redisClient.set(`${user.id}`, JSON.stringify(omit(user, excludedFields)), {
         EX: parseInt(process.env.redisCacheExpiresIn as string) * 60
@@ -56,4 +56,10 @@ export const signTokens = async (user: Prisma.UserCreateInput) => {
     })
 
     return { access_token, refresh_token }
+}
+
+export const generateNewAccessToken = (userId: string) => {
+    return signJwt({ sub: userId}, 'accessTokenPrivateKey', {
+        expiresIn: `${process.env.accessTokenExpiresIn}m`
+    })
 }
