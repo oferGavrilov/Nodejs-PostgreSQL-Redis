@@ -25,13 +25,13 @@ export const findUser = async (
     return (await prisma.user.findFirst({ where, select })) as User | null
 }
 
-export const updateUser = async(
+export const updateUser = async (
     where: Prisma.UserWhereUniqueInput,
     data: Prisma.UserUpdateInput,
     select?: Prisma.UserSelect
 ) => {
-    return (await prisma.user.update({ where, data, select })) as User
-}
+    return (await prisma.user.update({ where, data, select }));
+};
 
 export const signTokens = async (user: User) => {
     // create session
@@ -40,11 +40,11 @@ export const signTokens = async (user: User) => {
     })
 
     // create access and refresh tokens
-    const access_token = signJwt({sub: user.id} , 'accessTokenPrivateKey', {
+    const access_token = signJwt({ sub: user.id }, 'accessTokenPrivateKey', {
         expiresIn: `${process.env.accessTokenExpiresIn}m`
     })
 
-    const refresh_token = signJwt({sub: user.id} , 'refreshTokenPrivateKey', {
+    const refresh_token = signJwt({ sub: user.id }, 'refreshTokenPrivateKey', {
         expiresIn: `${process.env.refreshTokenExpiresIn}m`
     })
 

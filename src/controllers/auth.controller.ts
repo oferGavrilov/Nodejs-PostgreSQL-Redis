@@ -4,6 +4,8 @@ import bcrypt from 'bcrypt';
 import { createUser, updateUser } from '../services/user.service';
 import Email from '../utils/email';
 import { Prisma } from '@prisma/client';
+import { VerifyEmailInput } from '../schemas/user.schema';
+import ErrorHandler from '../utils/ErrorHandler';
 
 const cookiesOptions: CookieOptions = {
     httpOnly: true,
@@ -27,7 +29,7 @@ const refreshTokenCookieOptions: CookieOptions = {
 export const registerUserHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const hashedPassword = await bcrypt.hash(req.body.password, 12)
-        
+
         const verifyCode = crypto.randomBytes(32).toString('hex')
         const verificationCode = crypto
             .createHash('sha256')
@@ -41,7 +43,7 @@ export const registerUserHandler = async (req: Request, res: Response, next: Nex
             verificationCode,
         })
 
-        const redirectUrl = `${req.protocol}://${req.get('host')}/verify-email/${verificationCode}`
+        const redirectUrl = `${req.protocol}://${req.get('host')}/api/auth/verify-email/${verifyCode}`
 
         try {
             await new Email(user, redirectUrl).sendVerificationCode()
@@ -68,5 +70,42 @@ export const registerUserHandler = async (req: Request, res: Response, next: Nex
             }
         }
         next(error)
+    }
+}
+
+export const verifyEmailHandler = async (
+    req: Request<VerifyEmailInput>,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const verificationCode = crypto
+            .createHash('sha256')
+            .update(req.params.verificationCode)
+            .digest('hex')
+
+        const user = await updateUser(
+            { verificationCode },
+            { verified: true, verificationCode: null },
+            { email: true }
+        );
+        
+        if (!user) return next(new ErrorHandler(401, 'Could not verify email. Please try again.'))
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Email verified successfully',
+        })
+
+    } catch (error: any) {
+        console.log('error', error)
+        if (error.code === 'P2025') {
+            return res.status(403).json({
+                status: 'fail',
+                message: "Verification code is invalid or user doesn't exist"
+            })
+        }
+
+        next(error);
     }
 }

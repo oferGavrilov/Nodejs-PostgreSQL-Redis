@@ -8,6 +8,8 @@ import { PrismaClient } from '@prisma/client'
 import redisClient from './utils/connectRedis'
 import ErrorHandler from './utils/ErrorHandler';
 
+import authRouter from './routes/auth.routes'
+
 validateEnv()
 
 const prisma = new PrismaClient() // Prisma client instance
@@ -25,7 +27,12 @@ async function bootstrap() {
         origin: process.env.CORS_ORIGIN,
         credentials: true
     }))
+
+    // Logging
     if (process.env.NODE_ENV === 'development') app.use(morgan('dev'))
+
+    // Routes
+    app.use('/api/auth', authRouter)
 
     // Testing
     app.get('/api/healthchecker', async (_, res: Response) => {
