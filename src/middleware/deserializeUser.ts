@@ -51,7 +51,7 @@ export const deserializeUser = async (
             return next(new ErrorHandler(401, "Session has expired"));
         }
 
-        const user = await findUniqueUser({ id: JSON.parse(session).userId });
+        const user = await findUniqueUser({ id: JSON.parse(session).id });
 
         if (!user) {
             return next(new ErrorHandler(401, "Invalid token or session has expired"));

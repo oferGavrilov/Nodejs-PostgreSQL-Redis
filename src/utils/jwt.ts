@@ -1,25 +1,15 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
-import fs from 'fs';
-import path from 'path';
-import { Prisma } from '@prisma/client';
-import { omit } from 'lodash';
-import redisClient from './connectRedis';
-import { excludedFields } from '../services/user.service';
 
 export const signJwt = (
     payload: Object,
     keyName: 'accessTokenPrivateKey' | 'refreshTokenPrivateKey',
     options: SignOptions
 ) => {
-    const filePath = path.join(__dirname, '/../../jwt-keys', `${keyName}.pem`)
-    if (!fs.existsSync(filePath)) {
-        throw new Error(`${keyName} file is missing`);
-    }
-    const privateKey = fs.readFileSync(filePath, 'utf8')
-
+    const secureKey = keyName === 'accessTokenPrivateKey' ? process.env.JWT_ACCESS_TOKEN_PRIVATE_KEY : process.env.JWT_REFRESH_TOKEN_PRIVATE_KEY
+    const privateKey = Buffer.from(secureKey as string, 'base64').toString('ascii')
 
     return jwt.sign(payload, privateKey, {
-        ...options,
+        ...(options && options),
         algorithm: 'RS256',
     });
 }
@@ -29,17 +19,8 @@ export const verifyJwt = <T>(
     keyName: 'accessTokenPublicKey' | 'refreshTokenPublicKey'
 ) => {
     try {
-        const filePath = path.join(__dirname, '/../../jwt-keys', `${keyName}.pem`)
-
-        if (!fs.existsSync(filePath)) {
-            throw new Error(`${keyName} file is missing`);
-        }
-
-        const publicKey = fs.readFileSync(filePath, 'utf8')
-
-        if (!publicKey) {
-            throw new Error('Public key is missing');
-        }
+        const secureKey = keyName === 'accessTokenPublicKey' ? process.env.JWT_ACCESS_TOKEN_PUBLIC_KEY : process.env.JWT_REFRESH_TOKEN_PUBLIC_KEY
+        const publicKey = Buffer.from(secureKey as string, 'base64').toString('ascii')
 
         const decoded = jwt.verify(token, publicKey) as T
 

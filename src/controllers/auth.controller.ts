@@ -6,6 +6,7 @@ import Email from '../utils/email';
 import { Prisma } from '@prisma/client';
 import { LoginUserInput, VerifyEmailInput } from '../schemas/user.schema';
 import ErrorHandler from '../utils/ErrorHandler';
+import redisClient from '../utils/connectRedis';
 
 const cookiesOptions: CookieOptions = {
     httpOnly: true,
@@ -148,4 +149,29 @@ export const verifyEmailHandler = async (
 
         next(error);
     }
+}
+
+export const logoutUserHandler = async (
+    req: Request,
+    res: Response, 
+    next: NextFunction
+) => { 
+    try {
+        await redisClient.del(res.locals.user.id)
+        _clearCookies(res)
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Logout successful'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+
+const _clearCookies = (res: Response) => {
+    res.clearCookie('access_token')
+    res.clearCookie('refresh_token')
+    res.clearCookie('logged_in')
 }
